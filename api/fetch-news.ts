@@ -1,0 +1,38 @@
+import type { VercelRequest, VercelResponse } from '@vercel/node';
+
+export default async function handler(req: VercelRequest, res: VercelResponse) {
+  const { keyword } = req.query;
+  const gnewsApiKey = process.env.GNEWS_API_KEY;
+
+  if (!keyword || typeof keyword !== 'string') {
+    return res.status(400).json({ error: '検索キーワードが必要です。' });
+  }
+  if (!gnewsApiKey) {
+    return res.status(500).json({ error: 'GNews APIキーがサーバー側で設定されていません。' });
+  }
+
+  try {
+    const params = new URLSearchParams({
+      q: keyword,
+      lang: 'ja',
+      country: 'jp',
+      max: '10',
+      apikey: gnewsApiKey,
+    });
+
+    const gnewsUrl = `https://gnews.io/api/v4/search?${params.toString()}`;
+    console.log(`[Info] Searching GNews: ${gnewsUrl}`);
+    
+    const response = await fetch(gnewsUrl);
+    if (!response.ok) {
+      throw new Error(`GNews API request failed: ${response.status}`);
+    }
+
+    const data = await response.json();
+    res.status(200).json(data.articles || []);
+
+  } catch (error: any) {
+    console.error('An error occurred in fetch-news handler:', error);
+    res.status(500).json({ error: error.message || 'サーバーでエラーが発生しました。' });
+  }
+}
