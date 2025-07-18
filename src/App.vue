@@ -28,7 +28,16 @@
               <h3><a :href="article.url" target="_blank" rel="noopener noreferrer">{{ article.title }}</a></h3>
               <p class="source">{{ article.source.name }} - {{ new Date(article.publishedAt).toLocaleString('ja-JP') }}</p>
               <p class="description">{{ article.description }}</p>
-            </li>
+
+              <div class="summary-actions">
+                <button @click="summarizeArticle(index)" :disabled="article.loadingSummary">
+                  <span v-if="!article.loadingSummary">🤖 AIで要約</span>
+                  <span v-else>要約中...</span>
+                </button>
+              </div>
+              <div v-if="article.summary" class="summary-result" v-html="article.summary.replace(/\n/g, '<br>')"></div>
+              <div v-if="article.summaryError" class="summary-error">{{ article.summaryError }}</div>
+              </li>
           </ul>
         </div>
       </main>
@@ -83,6 +92,44 @@ const fetchNews = async () => {
     loading.value = false;
   }
 };
+
+// ★★★ ここからが修正箇所 ★★★
+const summarizeArticle = async (index: number) => {
+  const article = articles.value[index];
+  article.loadingSummary = true;
+  article.summaryError = '';
+  article.summary = '';
+
+  // フロントエンドがキー選択の責任を持つ
+  const geminiApiKey = import.meta.env.VITE_GEMINI_API_KEY;
+  if (!geminiApiKey) {
+    article.summaryError = 'VITE_GEMINI_API_KEY が.env.localに設定されていません。';
+    article.loadingSummary = false;
+    return;
+  }
+
+  try {
+    const response = await fetch('/api/summarize-article', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ 
+        articleUrl: article.url,
+        geminiApiKey: geminiApiKey // キーをバックエンドに渡す
+      })
+    });
+    
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.error || '要約の生成に失敗しました。');
+    }
+    article.summary = data.summary;
+  } catch (e: any) {
+    article.summaryError = e.message;
+  } finally {
+    article.loadingSummary = false;
+  }
+};
+// ★★★ ここまでが修正箇所 ★★★
 </script>
 
 <style>
@@ -103,4 +150,27 @@ const fetchNews = async () => {
   .articles-list h3 a { text-decoration: none; color: #1a73e8; }
   .articles-list h3 a:hover { text-decoration: underline; }
   .source { font-size: 0.9rem; color: #666; }
+  .summary-actions { margin-top: 1rem; }
+  .summary-actions button {
+    background: none;
+    border: 1px solid #1a73e8;
+    color: #1a73e8;
+    padding: 0.5rem 1rem;
+    border-radius: 1rem;
+    cursor: pointer;
+  }
+  .summary-result {
+    margin-top: 1rem;
+    padding: 1rem;
+    background-color: #e8f0fe;
+    border-left: 4px solid #1a73e8;
+    white-space: pre-wrap;
+    line-height: 1.6;
+  }
+  .summary-error {
+    margin-top: 1rem;
+    padding: 1rem;
+    color: red;
+    background-color: #ffebee;
+  }
 </style>
