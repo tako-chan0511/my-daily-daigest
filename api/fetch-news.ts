@@ -1,14 +1,17 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  const { keyword } = req.query;
-  const gnewsApiKey = process.env.GNEWS_API_KEY;
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: "POST method required." });
+  }
+
+  const { keyword, gnewsApiKey } = req.body;
 
   if (!keyword || typeof keyword !== 'string') {
     return res.status(400).json({ error: '検索キーワードが必要です。' });
   }
   if (!gnewsApiKey) {
-    return res.status(500).json({ error: 'GNews APIキーがサーバー側で設定されていません。' });
+    return res.status(500).json({ error: 'GNews APIキーがフロントエンドから提供されませんでした。' });
   }
 
   try {
@@ -24,8 +27,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     console.log(`[Info] Searching GNews: ${gnewsUrl}`);
     
     const response = await fetch(gnewsUrl);
+
     if (!response.ok) {
-      throw new Error(`GNews API request failed: ${response.status}`);
+      const errorData = await response.json();
+      throw new Error(`GNews API request failed: ${response.status} ${errorData?.errors?.join(', ') || 'Unknown error'}`);
     }
 
     const data = await response.json();
