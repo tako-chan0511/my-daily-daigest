@@ -25,32 +25,59 @@
             v-for="(article, index) in state.articles"
             :key="index"
             @click="selectArticle(article)"
-            :class="{ 'selected': state.selectedArticle?.url === article.url }"
+            :class="{ selected: state.selectedArticle?.url === article.url }"
           >
             <h3>{{ article.title }}</h3>
-            <p class="source">
-              {{ article.source.name }} -
-              <a :href="article.source.url" target="_blank" rel="noopener noreferrer" @click.stop>
-                {{ article.source.url }}
-              </a>
-            </p>
+            <div class="meta-info">
+              <span class="source-name">{{ article.source.name }}</span>
+              <span class="date">{{ formatDate(article.publishedAt) }}</span>
+            </div>
+            <a
+              class="source-url"
+              :href="article.source.url"
+              target="_blank"
+              rel="noopener noreferrer"
+              @click.stop
+            >
+              {{ article.source.url }}
+            </a>
           </li>
         </ul>
-        <div v-if="!loading.news && state.articles.length === 0 && state.lastSearchedKeyword" class="placeholder">
-          「{{ state.lastSearchedKeyword }}」に関するニュースは見つかりませんでした。
+        <div
+          v-if="
+            !loading.news &&
+            state.articles.length === 0 &&
+            state.lastSearchedKeyword
+          "
+          class="placeholder"
+        >
+          「{{
+            state.lastSearchedKeyword
+          }}」に関するニュースは見つかりませんでした。
         </div>
       </div>
 
       <div class="pane article-content-pane">
         <h2 class="pane-title">AI要約</h2>
-        <div v-if="loading.content || loading.summary" class="loading-spinner"></div>
-        <div v-if="error.summary" class="error-message">{{ error.summary }}</div>
-        
-        <div v-if="state.summaryResult" class="ai-section">
-          <div class="summary-result markdown-body" v-html="marked(state.summaryResult)"></div>
+        <div
+          v-if="loading.content || loading.summary"
+          class="loading-spinner"
+        ></div>
+        <div v-if="error.summary" class="error-message">
+          {{ error.summary }}
         </div>
-        
-        <div v-if="!state.selectedArticle && !loading.content && !loading.summary" class="placeholder">
+
+        <div v-if="state.summaryResult" class="ai-section">
+          <div
+            class="summary-result markdown-body"
+            v-html="marked(state.summaryResult)"
+          ></div>
+        </div>
+
+        <div
+          v-if="!state.selectedArticle && !loading.content && !loading.summary"
+          class="placeholder"
+        >
           ← 記事を選択すると、ここにAI要約が表示されます
         </div>
       </div>
@@ -58,24 +85,42 @@
       <div class="pane ai-assistant-pane">
         <h2 class="pane-title">AIと対話</h2>
         <div v-if="loading.answer" class="loading-spinner"></div>
-        
+
         <div v-if="state.selectedArticle" class="ai-section follow-up-section">
           <h3>記事への質問</h3>
           <div class="question-form">
-            <textarea v-model="followUpQuestion" placeholder="記事の内容について質問を入力..." rows="3"></textarea>
-            <button @click="askQuestion" :disabled="loading.answer || !followUpQuestion">質問する</button>
+            <textarea
+              v-model="followUpQuestion"
+              placeholder="記事の内容について質問を入力..."
+              rows="3"
+            ></textarea>
+            <button
+              @click="askQuestion"
+              :disabled="loading.answer || !followUpQuestion"
+            >
+              質問する
+            </button>
           </div>
-          <div v-if="error.answer" class="error-message">{{ error.answer }}</div>
+          <div v-if="error.answer" class="error-message">
+            {{ error.answer }}
+          </div>
           <div v-if="state.qaHistory.length > 0" class="qa-history">
             <h4>対話履歴</h4>
-            <div v-for="(item, index) in state.qaHistory" :key="index" class="qa-item">
-               <p class="question">{{ item.question }}</p>
-               <p class="answer markdown-body" v-html="marked(item.answer)"></p>
+            <div
+              v-for="(item, index) in state.qaHistory"
+              :key="index"
+              class="qa-item"
+            >
+              <p class="question">{{ item.question }}</p>
+              <p class="answer markdown-body" v-html="marked(item.answer)"></p>
             </div>
           </div>
         </div>
 
-        <div v-if="!state.selectedArticle && !loading.answer" class="placeholder">
+        <div
+          v-if="!state.selectedArticle && !loading.answer"
+          class="placeholder"
+        >
           ← 記事を選択すると、ここからAIと対話できます
         </div>
       </div>
@@ -85,26 +130,30 @@
 
 <script setup lang="ts">
 // VueのonMountedとwatchをインポート
-import { ref, reactive, onMounted, watch } from 'vue';
-import { marked } from 'marked';
+import { ref, reactive, onMounted, watch } from "vue";
+import { marked } from "marked";
 
 // --- 状態管理オブジェクト ---
 // 永続化したいデータを一つのreactiveオブジェクトにまとめる
 const state = reactive({
-  lastSearchedKeyword: '半導体', // 初期キーワード
+  lastSearchedKeyword: "半導体", // 初期キーワード
   articles: [] as any[],
   selectedArticle: null as any | null,
-  selectedArticleContent: '', // Q&Aのために記事本文は保持する
-  summaryResult: '',
+  selectedArticleContent: "", // Q&Aのために記事本文は保持する
+  summaryResult: "",
   qaHistory: [] as { question: string; answer: string }[],
 });
 
 // --- UI操作など、永続化しないデータ ---
 const keyword = ref(state.lastSearchedKeyword); // 検索ボックスの入力値
-const loading = reactive({ news: false, content: false, summary: false, answer: false });
-const error = reactive({ news: '', content: '', summary: '', answer: '' });
-const followUpQuestion = ref('');
-
+const loading = reactive({
+  news: false,
+  content: false,
+  summary: false,
+  answer: false,
+});
+const error = reactive({ news: "", content: "", summary: "", answer: "" });
+const followUpQuestion = ref("");
 
 // --- 状態の保存と復元 ---
 
@@ -112,7 +161,7 @@ const followUpQuestion = ref('');
 const saveState = () => {
   try {
     const stateToSave = JSON.stringify(state);
-    localStorage.setItem('aiNewsDigestState', stateToSave);
+    localStorage.setItem("aiNewsDigestState", stateToSave);
   } catch (e) {
     console.error("Failed to save state:", e);
   }
@@ -121,7 +170,7 @@ const saveState = () => {
 // localStorageから状態を復元する関数
 const loadState = () => {
   try {
-    const savedState = localStorage.getItem('aiNewsDigestState');
+    const savedState = localStorage.getItem("aiNewsDigestState");
     if (savedState) {
       const parsedState = JSON.parse(savedState);
       // 保存されたデータでstateを更新
@@ -131,7 +180,7 @@ const loadState = () => {
     }
   } catch (e) {
     console.error("Failed to load state:", e);
-    localStorage.removeItem('aiNewsDigestState'); // エラー時はクリア
+    localStorage.removeItem("aiNewsDigestState"); // エラー時はクリア
   }
 };
 
@@ -144,38 +193,41 @@ onMounted(() => {
 // { deep: true } オプションでオブジェクトの深い階層の変更も検知
 watch(state, saveState, { deep: true });
 
-
 // --- API通信などの関数 ---
 // (内部のロジックを全て新しいstateオブジェクトを参照するように変更)
 
 const fetchNews = async () => {
   if (!keyword.value) {
-    error.news = 'キーワードを入力してください。';
+    error.news = "キーワードを入力してください。";
     return;
   }
   loading.news = true;
-  error.news = '';
+  error.news = "";
 
   // 状態をリセット
   state.articles = [];
   state.selectedArticle = null;
-  state.selectedArticleContent = '';
-  state.summaryResult = '';
+  state.selectedArticleContent = "";
+  state.summaryResult = "";
   state.qaHistory = [];
-  followUpQuestion.value = '';
+  followUpQuestion.value = "";
   state.lastSearchedKeyword = keyword.value;
 
   try {
     const apiKey = import.meta.env.VITE_GNEWS_API_KEY;
-    if (!apiKey) throw new Error('VITE_GNEWS_API_KEY が設定されていません。');
+    if (!apiKey) throw new Error("VITE_GNEWS_API_KEY が設定されていません。");
 
-    const response = await fetch('/api/fetch-news', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ gnewsApiKey: apiKey, keyword: state.lastSearchedKeyword })
+    const response = await fetch("/api/fetch-news", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        gnewsApiKey: apiKey,
+        keyword: state.lastSearchedKeyword,
+      }),
     });
     const data = await response.json();
-    if (!response.ok) throw new Error(data.error || 'ニュースの取得に失敗しました。');
+    if (!response.ok)
+      throw new Error(data.error || "ニュースの取得に失敗しました。");
     state.articles = data;
   } catch (e: any) {
     error.news = e.message;
@@ -189,14 +241,14 @@ const selectArticle = async (article: any) => {
   state.selectedArticle = article;
 
   // 選択時にサマリーとQ&A履歴をリセット
-  state.selectedArticleContent = '';
-  state.summaryResult = '';
+  state.selectedArticleContent = "";
+  state.summaryResult = "";
   state.qaHistory = [];
-  followUpQuestion.value = '';
-  error.content = '';
-  error.summary = '';
-  error.answer = '';
-  
+  followUpQuestion.value = "";
+  error.content = "";
+  error.summary = "";
+  error.answer = "";
+
   fetchArticleContent(article.url);
 };
 
@@ -204,10 +256,10 @@ const fetchArticleContent = async (url: string) => {
   loading.content = true;
   loading.summary = true;
   try {
-    const response = await fetch('/api/fetch-article-content', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ articleUrl: url })
+    const response = await fetch("/api/fetch-article-content", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ articleUrl: url }),
     });
     const data = await response.json();
     if (!response.ok) throw new Error(data.error);
@@ -224,12 +276,13 @@ const fetchArticleContent = async (url: string) => {
 const summarizeText = async (text: string) => {
   try {
     const geminiApiKey = import.meta.env.VITE_GEMINI_API_KEY;
-    if (!geminiApiKey) throw new Error('VITE_GEMINI_API_KEY が設定されていません。');
-    
-    const response = await fetch('/api/summarize-article', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ articleText: text, geminiApiKey })
+    if (!geminiApiKey)
+      throw new Error("VITE_GEMINI_API_KEY が設定されていません。");
+
+    const response = await fetch("/api/summarize-article", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ articleText: text, geminiApiKey }),
     });
     const data = await response.json();
     if (!response.ok) throw new Error(data.error);
@@ -245,33 +298,45 @@ const askQuestion = async () => {
   if (!followUpQuestion.value || !state.selectedArticleContent) return;
 
   loading.answer = true;
-  error.answer = '';
+  error.answer = "";
   const currentQuestion = followUpQuestion.value;
-  followUpQuestion.value = '';
+  followUpQuestion.value = "";
 
   try {
     const geminiApiKey = import.meta.env.VITE_GEMINI_API_KEY;
-    if (!geminiApiKey) throw new Error('VITE_GEMINI_API_KEY が設定されていません。');
-    
-    const response = await fetch('/api/answer-question', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ 
+    if (!geminiApiKey)
+      throw new Error("VITE_GEMINI_API_KEY が設定されていません。");
+
+    const response = await fetch("/api/answer-question", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
         articleText: state.selectedArticleContent,
         question: currentQuestion,
-        geminiApiKey 
-      })
+        geminiApiKey,
+      }),
     });
     const data = await response.json();
     if (!response.ok) throw new Error(data.error);
 
     state.qaHistory.unshift({ question: currentQuestion, answer: data.answer });
-    
   } catch (e: any) {
     error.answer = e.message;
   } finally {
     loading.answer = false;
   }
+};
+// ★★追加: 日付をフォーマットする関数
+const formatDate = (isoString: string): string => {
+  if (!isoString) return "";
+  const date = new Date(isoString);
+  const year = date.getFullYear();
+  // getMonth()は0から始まるため+1する。padStartで0埋めする
+  const month = (date.getMonth() + 1).toString().padStart(2, "0");
+  const day = date.getDate().toString().padStart(2, "0");
+  const hours = date.getHours().toString().padStart(2, "0");
+  const minutes = date.getMinutes().toString().padStart(2, "0");
+  return `${year}年${month}月${day}日 ${hours}:${minutes}`;
 };
 </script>
 
@@ -289,8 +354,8 @@ html,
 body {
   height: 100%;
   margin: 0;
-  font-family: 'Hiragino Kaku Gothic ProN', 'ヒラギノ角ゴ ProN W3', Meiryo, メイリオ, Osaka, 'MS PGothic',
-    arial, helvetica, sans-serif;
+  font-family: "Hiragino Kaku Gothic ProN", "ヒラギノ角ゴ ProN W3", Meiryo,
+    メイリオ, Osaka, "MS PGothic", arial, helvetica, sans-serif;
   background-color: var(--background-color);
   color: var(--text-color);
 }
@@ -396,7 +461,6 @@ body {
   min-width: 350px; /* 最小幅 */
 }
 
-
 .article-list-pane ul {
   list-style: none;
   padding: 0;
@@ -425,6 +489,25 @@ body {
   font-weight: 600;
   color: var(--text-color);
 }
+/* ★★追加: 日付とソース名を囲むコンテナ */
+.meta-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.8rem;
+  color: var(--sub-text-color);
+  margin: 0.5rem 0 0.25rem;
+}
+
+.source-name {
+  font-weight: 500;
+}
+
+.date {
+  /* 右寄せにする */
+  margin-left: auto;
+  padding-left: 1em;
+}
 .source {
   font-size: 0.8rem;
   color: var(--sub-text-color);
@@ -435,6 +518,17 @@ body {
   text-decoration: none;
 }
 .source a:hover {
+  text-decoration: underline;
+}
+/* ★★修正: URLのスタイルを調整 */
+.source-url {
+  font-size: 0.8rem;
+  color: var(--sub-text-color);
+  text-decoration: none;
+  display: block; /* URLが長い場合に折り返すように */
+  word-break: break-all;
+}
+.source-url:hover {
   text-decoration: underline;
 }
 
@@ -583,7 +677,7 @@ body {
 .markdown-body h3 {
   font-size: 1.2rem;
   border-bottom: 1px solid #eee;
-  padding-bottom: .3em;
+  padding-bottom: 0.3em;
 }
 .markdown-body p {
   margin-top: 0;
