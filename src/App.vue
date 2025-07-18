@@ -20,12 +20,12 @@
         <h2 class="pane-title">検索結果</h2>
         <div v-if="loading.news" class="loading-spinner"></div>
         <div v-if="error.news" class="error-message">{{ error.news }}</div>
-        <ul v-if="articles.length > 0">
+        <ul v-if="state.articles.length > 0">
           <li
-            v-for="(article, index) in articles"
+            v-for="(article, index) in state.articles"
             :key="index"
             @click="selectArticle(article)"
-            :class="{ 'selected': selectedArticle?.url === article.url }"
+            :class="{ 'selected': state.selectedArticle?.url === article.url }"
           >
             <h3>{{ article.title }}</h3>
             <p class="source">
@@ -36,8 +36,8 @@
             </p>
           </li>
         </ul>
-        <div v-if="!loading.news && articles.length === 0 && lastSearchedKeyword" class="placeholder">
-          「{{ lastSearchedKeyword }}」に関するニュースは見つかりませんでした。
+        <div v-if="!loading.news && state.articles.length === 0 && state.lastSearchedKeyword" class="placeholder">
+          「{{ state.lastSearchedKeyword }}」に関するニュースは見つかりませんでした。
         </div>
       </div>
 
@@ -46,11 +46,11 @@
         <div v-if="loading.content || loading.summary" class="loading-spinner"></div>
         <div v-if="error.summary" class="error-message">{{ error.summary }}</div>
         
-        <div v-if="summaryResult" class="ai-section">
-          <div class="summary-result markdown-body" v-html="marked(summaryResult)"></div>
+        <div v-if="state.summaryResult" class="ai-section">
+          <div class="summary-result markdown-body" v-html="marked(state.summaryResult)"></div>
         </div>
         
-        <div v-if="!selectedArticle && !loading.content && !loading.summary" class="placeholder">
+        <div v-if="!state.selectedArticle && !loading.content && !loading.summary" class="placeholder">
           ← 記事を選択すると、ここにAI要約が表示されます
         </div>
       </div>
@@ -59,23 +59,23 @@
         <h2 class="pane-title">AIと対話</h2>
         <div v-if="loading.answer" class="loading-spinner"></div>
         
-        <div v-if="selectedArticle" class="ai-section follow-up-section">
+        <div v-if="state.selectedArticle" class="ai-section follow-up-section">
           <h3>記事への質問</h3>
           <div class="question-form">
             <textarea v-model="followUpQuestion" placeholder="記事の内容について質問を入力..." rows="3"></textarea>
             <button @click="askQuestion" :disabled="loading.answer || !followUpQuestion">質問する</button>
           </div>
           <div v-if="error.answer" class="error-message">{{ error.answer }}</div>
-          <div v-if="qaHistory.length > 0" class="qa-history">
+          <div v-if="state.qaHistory.length > 0" class="qa-history">
             <h4>対話履歴</h4>
-            <div v-for="(item, index) in qaHistory" :key="index" class="qa-item">
+            <div v-for="(item, index) in state.qaHistory" :key="index" class="qa-item">
                <p class="question">{{ item.question }}</p>
                <p class="answer markdown-body" v-html="marked(item.answer)"></p>
             </div>
           </div>
         </div>
 
-        <div v-if="!selectedArticle && !loading.answer" class="placeholder">
+        <div v-if="!state.selectedArticle && !loading.answer" class="placeholder">
           ← 記事を選択すると、ここからAIと対話できます
         </div>
       </div>
@@ -84,21 +84,69 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive } from 'vue';
-// ★★変更点: markedライブラリをインポート
+// VueのonMountedとwatchをインポート
+import { ref, reactive, onMounted, watch } from 'vue';
 import { marked } from 'marked';
 
-// --- <script>部分はAPI呼び出しロジックなので変更ありません ---
-const keyword = ref('半導体');
-const lastSearchedKeyword = ref('');
-const articles = ref<any[]>([]);
+// --- 状態管理オブジェクト ---
+// 永続化したいデータを一つのreactiveオブジェクトにまとめる
+const state = reactive({
+  lastSearchedKeyword: '半導体', // 初期キーワード
+  articles: [] as any[],
+  selectedArticle: null as any | null,
+  selectedArticleContent: '', // Q&Aのために記事本文は保持する
+  summaryResult: '',
+  qaHistory: [] as { question: string; answer: string }[],
+});
+
+// --- UI操作など、永続化しないデータ ---
+const keyword = ref(state.lastSearchedKeyword); // 検索ボックスの入力値
 const loading = reactive({ news: false, content: false, summary: false, answer: false });
 const error = reactive({ news: '', content: '', summary: '', answer: '' });
-const selectedArticle = ref<any>(null);
-const selectedArticleContent = ref('');
-const summaryResult = ref('');
 const followUpQuestion = ref('');
-const qaHistory = ref<{ question: string; answer: string }[]>([]);
+
+
+// --- 状態の保存と復元 ---
+
+// 状態をlocalStorageに保存する関数
+const saveState = () => {
+  try {
+    const stateToSave = JSON.stringify(state);
+    localStorage.setItem('aiNewsDigestState', stateToSave);
+  } catch (e) {
+    console.error("Failed to save state:", e);
+  }
+};
+
+// localStorageから状態を復元する関数
+const loadState = () => {
+  try {
+    const savedState = localStorage.getItem('aiNewsDigestState');
+    if (savedState) {
+      const parsedState = JSON.parse(savedState);
+      // 保存されたデータでstateを更新
+      Object.assign(state, parsedState);
+      // 検索ボックスのキーワードも復元した値に合わせる
+      keyword.value = state.lastSearchedKeyword;
+    }
+  } catch (e) {
+    console.error("Failed to load state:", e);
+    localStorage.removeItem('aiNewsDigestState'); // エラー時はクリア
+  }
+};
+
+// アプリケーション起動時に一度だけ状態を復元
+onMounted(() => {
+  loadState();
+});
+
+// stateオブジェクトが変更されたら、自動でsaveStateを実行
+// { deep: true } オプションでオブジェクトの深い階層の変更も検知
+watch(state, saveState, { deep: true });
+
+
+// --- API通信などの関数 ---
+// (内部のロジックを全て新しいstateオブジェクトを参照するように変更)
 
 const fetchNews = async () => {
   if (!keyword.value) {
@@ -107,13 +155,15 @@ const fetchNews = async () => {
   }
   loading.news = true;
   error.news = '';
-  articles.value = [];
-  selectedArticle.value = null;
-  selectedArticleContent.value = '';
-  summaryResult.value = '';
-  qaHistory.value = [];
+
+  // 状態をリセット
+  state.articles = [];
+  state.selectedArticle = null;
+  state.selectedArticleContent = '';
+  state.summaryResult = '';
+  state.qaHistory = [];
   followUpQuestion.value = '';
-  lastSearchedKeyword.value = keyword.value;
+  state.lastSearchedKeyword = keyword.value;
 
   try {
     const apiKey = import.meta.env.VITE_GNEWS_API_KEY;
@@ -122,11 +172,11 @@ const fetchNews = async () => {
     const response = await fetch('/api/fetch-news', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ gnewsApiKey: apiKey, keyword: keyword.value }),
+      body: JSON.stringify({ gnewsApiKey: apiKey, keyword: state.lastSearchedKeyword })
     });
     const data = await response.json();
     if (!response.ok) throw new Error(data.error || 'ニュースの取得に失敗しました。');
-    articles.value = data;
+    state.articles = data;
   } catch (e: any) {
     error.news = e.message;
   } finally {
@@ -135,16 +185,18 @@ const fetchNews = async () => {
 };
 
 const selectArticle = async (article: any) => {
-  if (selectedArticle.value?.url === article.url) return;
-  selectedArticle.value = article;
-  selectedArticleContent.value = '';
-  summaryResult.value = '';
-  qaHistory.value = [];
+  if (state.selectedArticle?.url === article.url) return;
+  state.selectedArticle = article;
+
+  // 選択時にサマリーとQ&A履歴をリセット
+  state.selectedArticleContent = '';
+  state.summaryResult = '';
+  state.qaHistory = [];
   followUpQuestion.value = '';
   error.content = '';
   error.summary = '';
   error.answer = '';
-
+  
   fetchArticleContent(article.url);
 };
 
@@ -155,11 +207,11 @@ const fetchArticleContent = async (url: string) => {
     const response = await fetch('/api/fetch-article-content', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ articleUrl: url }),
+      body: JSON.stringify({ articleUrl: url })
     });
     const data = await response.json();
     if (!response.ok) throw new Error(data.error);
-    selectedArticleContent.value = data.articleText;
+    state.selectedArticleContent = data.articleText;
     summarizeText(data.articleText);
   } catch (e: any) {
     error.content = e.message;
@@ -173,15 +225,15 @@ const summarizeText = async (text: string) => {
   try {
     const geminiApiKey = import.meta.env.VITE_GEMINI_API_KEY;
     if (!geminiApiKey) throw new Error('VITE_GEMINI_API_KEY が設定されていません。');
-
+    
     const response = await fetch('/api/summarize-article', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ articleText: text, geminiApiKey }),
+      body: JSON.stringify({ articleText: text, geminiApiKey })
     });
     const data = await response.json();
     if (!response.ok) throw new Error(data.error);
-    summaryResult.value = data.summary;
+    state.summaryResult = data.summary;
   } catch (e: any) {
     error.summary = e.message;
   } finally {
@@ -190,7 +242,7 @@ const summarizeText = async (text: string) => {
 };
 
 const askQuestion = async () => {
-  if (!followUpQuestion.value || !selectedArticleContent.value) return;
+  if (!followUpQuestion.value || !state.selectedArticleContent) return;
 
   loading.answer = true;
   error.answer = '';
@@ -200,20 +252,21 @@ const askQuestion = async () => {
   try {
     const geminiApiKey = import.meta.env.VITE_GEMINI_API_KEY;
     if (!geminiApiKey) throw new Error('VITE_GEMINI_API_KEY が設定されていません。');
-
+    
     const response = await fetch('/api/answer-question', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        articleText: selectedArticleContent.value,
+      body: JSON.stringify({ 
+        articleText: state.selectedArticleContent,
         question: currentQuestion,
-        geminiApiKey,
-      }),
+        geminiApiKey 
+      })
     });
     const data = await response.json();
     if (!response.ok) throw new Error(data.error);
 
-    qaHistory.value.unshift({ question: currentQuestion, answer: data.answer });
+    state.qaHistory.unshift({ question: currentQuestion, answer: data.answer });
+    
   } catch (e: any) {
     error.answer = e.message;
   } finally {
