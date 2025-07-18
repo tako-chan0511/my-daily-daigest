@@ -219,83 +219,120 @@ const askQuestion = async () => {
 </script>
 
 <style>
-  :root {
+    :root {
+    /* カラーパレットを微調整して、より柔らかい印象に */
     --border-color: #e0e0e0;
-    --background-color: #f0f2f5;
+    --background-color: #f4f5f7; /* 少しだけ色味のある背景色 */
     --pane-background: #ffffff;
-    --primary-color: #1a73e8;
-    --text-color: #202124;
-    --sub-text-color: #5f6368;
+    --primary-color: #0d6efd; /* より鮮やかな青 */
+    --text-color: #212529;
+    --sub-text-color: #6c757d;
+    --selected-bg-color: #e9ecef; /* 選択時の背景色 */
   }
   html, body {
     height: 100%;
     margin: 0;
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    font-family: 'Hiragino Kaku Gothic ProN', 'ヒラギノ角ゴ ProN W3', Meiryo, メイリオ, Osaka, 'MS PGothic', arial, helvetica, sans-serif;
     background-color: var(--background-color);
+    color: var(--text-color);
   }
   #app {
     display: flex;
     flex-direction: column;
     height: 100vh;
   }
+  /* --- 1. トップバーの改善 --- */
   .top-bar {
     display: flex;
     align-items: center;
-    padding: 1rem 2rem;
+    padding: 1rem 1.5rem;
     background-color: var(--pane-background);
-    border-bottom: 1px solid var(--border-color);
+    /* 影を付けてコンテンツエリアから少し浮き上がらせる */
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    z-index: 10; /* 他の要素より手前に表示 */
     flex-shrink: 0;
   }
   .top-bar h1 {
     font-size: 1.5rem;
     margin: 0;
-    color: var(--primary-color);
+    color: #333; /* ブランドカラーではなく、落ち着いた色に */
   }
   .search-box {
     display: flex;
-    gap: 1rem;
-    margin-left: 2rem;
-    width: 400px;
+    gap: 0.5rem; /* ボタンとの間隔を少し詰める */
+    margin-left: auto; /* 右寄せにする */
+    width: 450px;
   }
   .search-box input {
     flex-grow: 1;
-    padding: 0.5rem;
+    padding: 0.75rem 1rem;
     font-size: 1rem;
     border: 1px solid var(--border-color);
-    border-radius: 4px;
+    border-radius: 8px; /* 角を丸く */
+    transition: all 0.2s ease; /* フォーカス時のアニメーション */
   }
-  .search-box button {
-    padding: 0.5rem 1rem;
+  .search-box input:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(13, 110, 253, 0.25);
+  }
+
+   .search-box button {
+    padding: 0.75rem 1.5rem;
     font-size: 1rem;
+    font-weight: 500;
     color: white;
     background-color: var(--primary-color);
     border: none;
-    border-radius: 4px;
+    border-radius: 8px; /* 角を丸く */
     cursor: pointer;
+    transition: background-color 0.2s ease;
   }
+  .search-box button:hover:not(:disabled) {
+    background-color: #0b5ed7; /* ホバー時少し濃くする */
+  }
+  .search-box button:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+  }
+
+  /* --- 2. メインコンテンツエリアの改善 --- */
   .main-content {
     display: flex;
     flex-grow: 1;
     overflow: hidden;
+    padding: 1rem; /* パネルの外側に余白を追加 */
+    gap: 1rem; /* パネル間の隙間を設定 */
   }
   .pane {
     flex: 1;
     overflow-y: auto;
-    padding: 0;
-    border-right: 1px solid var(--border-color);
+    background-color: var(--pane-background);
+    border: none; /* ボーダーを削除 */
+    border-radius: 12px; /* パネルの角を丸くする */
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08); /* 影を付けてカード感を出す */
+    display: flex;
+    flex-direction: column;
   }
+
   .pane-title {
-    font-size: 1.2rem;
+    font-size: 1.1rem;
+    font-weight: 600;
     padding: 1rem 1.5rem;
     border-bottom: 1px solid var(--border-color);
     margin: 0;
-    background-color: #f8f9fa;
+    background-color: #fcfcfc;
     position: sticky;
     top: 0;
+    z-index: 5;
+    /* 角丸を親要素に合わせる */
+    border-top-left-radius: 12px;
+    border-top-right-radius: 12px;
   }
   .pane:last-child {
     border-right: none;
   }
+  
   .article-list-pane {
     flex: 0 0 350px;
   }
@@ -320,76 +357,70 @@ const askQuestion = async () => {
     font-size: 1rem;
     color: var(--text-color);
   }
-  /* .source {
+  .source {
     font-size: 0.8rem;
     color: var(--sub-text-color);
     margin: 0;
-  } */
+  }
   .source a {
-  color: var(--sub-text-color);
-  text-decoration: none;
-}
-.source a:hover {
-  text-decoration: underline;
-}
+    color: var(--sub-text-color);
+    text-decoration: none;
+  }
+  .source a:hover {
+    text-decoration: underline;
+  }
+
   .article-content-pane {
     flex: 2;
   }
-  .article-body, .ai-section {
+  .article-body {
     padding: 1.5rem;
-    line-height: 1.7;
-    text-align: left;
+    line-height: 1.8; /* 行間を広げて読みやすくする */
   }
-  .summary-result, .qa-history {
+
+/* --- 4. AIアシスタントパネルの改善 --- */
+  .ai-assistant-pane {
+    flex: 1.2; /* 少し広く取る */
+  }
+  .ai-section {
+    padding: 1.5rem;
+  }
+  .ai-section h3 {
+    margin-top: 0;
+    margin-bottom: 1rem;
+    font-size: 1rem;
+    font-weight: 600;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 0.75rem;
+  }
+
+
+   .summary-result {
     line-height: 1.7;
+    background-color: #f8f9fa;
+    padding: 1rem;
+    border-radius: 8px;
     white-space: pre-wrap;
   }
-  .placeholder {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    height: 100%;
-    color: var(--sub-text-color);
-    padding: 1.5rem;
-  }
-  .loading-spinner {
-    width: 40px;
-    height: 40px;
-    border: 4px solid #f3f3f3;
-    border-top: 4px solid var(--primary-color);
-    border-radius: 50%;
-    animation: spin 1s linear infinite;
-    margin: 2rem auto;
-  }
-  @keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
-  }
-  .error-message {
-    color: red;
-    background-color: #ffebee;
-    border: 1px solid red;
-    padding: 1rem;
-    border-radius: 4px;
-    margin: 1rem;
-  }
-  .follow-up-section {
-    border-top: 1px solid var(--border-color);
-    padding-top: 1.5rem;
-  }
-  .question-form {
+   .question-form {
     display: flex;
     flex-direction: column;
-    gap: 0.5rem;
+    gap: 0.75rem;
   }
   .question-form textarea {
     width: 100%;
     box-sizing: border-box;
     padding: 0.75rem;
-    font-size: 1rem;
+    font-size: 0.95rem;
     border: 1px solid var(--border-color);
-    border-radius: 4px;
+    border-radius: 8px;
     resize: vertical;
+    transition: all 0.2s ease;
+  }
+  .question-form textarea:focus {
+     outline: none;
+     border-color: var(--primary-color);
+     box-shadow: 0 0 0 3px rgba(13, 110, 253, 0.25);
   }
   .question-form button {
     align-self: flex-end;
@@ -398,27 +429,84 @@ const askQuestion = async () => {
     color: white;
     background-color: var(--primary-color);
     border: none;
-    border-radius: 4px;
+    border-radius: 8px;
     cursor: pointer;
+    transition: background-color 0.2s ease;
   }
+  .question-form button:hover:not(:disabled) {
+    background-color: #0b5ed7;
+  }
+/* チャット風の対話履歴 */
   .qa-history {
     margin-top: 1.5rem;
+    padding: 0 0.5rem;
   }
   .qa-item {
-    margin-bottom: 1rem;
-    padding-bottom: 1rem;
-    border-bottom: 1px dashed var(--border-color);
+    margin-bottom: 1.5rem;
+    border-bottom: none; /* 区切り線を削除 */
+    display: flex;
+    flex-direction: column;
   }
-  .qa-item:last-child {
-    border-bottom: none;
+  .qa-item .question, .qa-item .answer {
+    padding: 0.75rem 1rem;
+    border-radius: 12px;
+    line-height: 1.6;
+    max-width: 90%;
   }
   .qa-item .question {
-    font-weight: bold;
-    color: var(--text-color);
+    background-color: var(--selected-bg-color);
+    align-self: flex-end; /* 質問を右寄せ */
+    border-bottom-right-radius: 0; /* 吹き出し風 */
   }
-   .qa-item .answer {
+  .qa-item .answer {
+    background-color: #f1f3f4;
+    align-self: flex-start; /* 回答を左寄せ */
+    border-bottom-left-radius: 0; /* 吹き出し風 */
+    white-space: pre-wrap;
+    margin-top: 0.5rem;
+  }
+  .qa-item p {
+    margin: 0;
+  }
+
+
+
+ /* --- 5. 共通・ユーティリティ要素 --- */
+  .placeholder {
+    flex-grow: 1; /* パネル内で中央に配置するため */
+    display: flex;
+    justify-content: center;
+    align-items: center;
     color: var(--sub-text-color);
-    padding-left: 1rem;
-    border-left: 3px solid #1a73e8;
+    padding: 1.5rem;
+    text-align: center;
   }
+
+  .loading-spinner {
+    width: 40px;
+    height: 40px;
+    border: 4px solid #f3f3f3;
+    border-top: 4px solid var(--primary-color);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin: auto; /* 中央配置 */
+    position: absolute; /* 他の要素の上に表示 */
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+  }
+  @keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+
+  .error-message {
+    color: #b91c1c;
+    background-color: #fef2f2;
+    border: 1px solid #fca5a5;
+    padding: 1rem;
+    border-radius: 8px;
+    margin: 1rem;
+  }
+
 </style>
