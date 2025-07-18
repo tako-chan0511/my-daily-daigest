@@ -26,8 +26,12 @@
               @click="selectArticle(article)"
               :class="{ 'selected': selectedArticle?.url === article.url }">
             <h3>{{ article.title }}</h3>
-            <p class="source">{{ article.source.name }} - {{ new Date(article.publishedAt).toLocaleString('ja-JP') }}</p>
-          </li>
+            <p class="source">
+        {{ article.source.name }} - 
+        <a :href="article.source.url" target="_blank" rel="noopener noreferrer" @click.stop>
+          {{ article.source.url }}
+        </a>
+      </p>          </li>
         </ul>
         <div v-if="!loading.news && articles.length === 0 && lastSearchedKeyword" class="placeholder">
           「{{ lastSearchedKeyword }}」に関するニュースは見つかりませんでした。
@@ -316,11 +320,18 @@ const askQuestion = async () => {
     font-size: 1rem;
     color: var(--text-color);
   }
-  .source {
+  /* .source {
     font-size: 0.8rem;
     color: var(--sub-text-color);
     margin: 0;
-  }
+  } */
+  .source a {
+  color: var(--sub-text-color);
+  text-decoration: none;
+}
+.source a:hover {
+  text-decoration: underline;
+}
   .article-content-pane {
     flex: 2;
   }
