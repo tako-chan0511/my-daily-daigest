@@ -3,9 +3,9 @@
     <div class="top-bar">
       <h1>AIニュースダイジェスト</h1>
       <div class="search-box">
-        <input 
-          v-model="keyword" 
-          @keyup.enter="fetchNews" 
+        <input
+          v-model="keyword"
+          @keyup.enter="fetchNews"
           placeholder="検索キーワード (例: 半導体)"
         />
         <button @click="fetchNews" :disabled="loading.news">
@@ -14,20 +14,22 @@
         </button>
       </div>
     </div>
-    
+
     <div class="main-content">
       <div class="pane article-list-pane">
         <h2 class="pane-title">検索結果</h2>
         <div v-if="loading.news" class="loading-spinner"></div>
         <div v-if="error.news" class="error-message">{{ error.news }}</div>
         <ul v-if="articles.length > 0">
-          <li v-for="(article, index) in articles" 
-              :key="index" 
-              @click="selectArticle(article)"
-              :class="{ 'selected': selectedArticle?.url === article.url }">
+          <li
+            v-for="(article, index) in articles"
+            :key="index"
+            @click="selectArticle(article)"
+            :class="{ 'selected': selectedArticle?.url === article.url }"
+          >
             <h3>{{ article.title }}</h3>
             <p class="source">
-              {{ article.source.name }} - 
+              {{ article.source.name }} -
               <a :href="article.source.url" target="_blank" rel="noopener noreferrer" @click.stop>
                 {{ article.source.url }}
               </a>
@@ -45,7 +47,7 @@
         <div v-if="error.summary" class="error-message">{{ error.summary }}</div>
         
         <div v-if="summaryResult" class="ai-section">
-          <div class="summary-result" v-html="summaryResult.replace(/\n/g, '<br>')"></div>
+          <div class="summary-result markdown-body" v-html="marked(summaryResult)"></div>
         </div>
         
         <div v-if="!selectedArticle && !loading.content && !loading.summary" class="placeholder">
@@ -68,7 +70,7 @@
             <h4>対話履歴</h4>
             <div v-for="(item, index) in qaHistory" :key="index" class="qa-item">
                <p class="question">{{ item.question }}</p>
-               <p class="answer" v-html="item.answer.replace(/\n/g, '<br>')"></p>
+               <p class="answer markdown-body" v-html="marked(item.answer)"></p>
             </div>
           </div>
         </div>
@@ -83,8 +85,10 @@
 
 <script setup lang="ts">
 import { ref, reactive } from 'vue';
+// ★★変更点: markedライブラリをインポート
+import { marked } from 'marked';
 
-// --- <script>部分は変更ありません ---
+// --- <script>部分はAPI呼び出しロジックなので変更ありません ---
 const keyword = ref('半導体');
 const lastSearchedKeyword = ref('');
 const articles = ref<any[]>([]);
@@ -94,7 +98,7 @@ const selectedArticle = ref<any>(null);
 const selectedArticleContent = ref('');
 const summaryResult = ref('');
 const followUpQuestion = ref('');
-const qaHistory = ref<{ question: string, answer: string }[]>([]);
+const qaHistory = ref<{ question: string; answer: string }[]>([]);
 
 const fetchNews = async () => {
   if (!keyword.value) {
@@ -118,7 +122,7 @@ const fetchNews = async () => {
     const response = await fetch('/api/fetch-news', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ gnewsApiKey: apiKey, keyword: keyword.value })
+      body: JSON.stringify({ gnewsApiKey: apiKey, keyword: keyword.value }),
     });
     const data = await response.json();
     if (!response.ok) throw new Error(data.error || 'ニュースの取得に失敗しました。');
@@ -140,45 +144,40 @@ const selectArticle = async (article: any) => {
   error.content = '';
   error.summary = '';
   error.answer = '';
-  
-  // 記事本文の取得と要約のロジックはそのまま
+
   fetchArticleContent(article.url);
 };
 
 const fetchArticleContent = async (url: string) => {
-  // コンテンツ取得と要約を同時にロード表示
   loading.content = true;
   loading.summary = true;
   try {
     const response = await fetch('/api/fetch-article-content', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ articleUrl: url })
+      body: JSON.stringify({ articleUrl: url }),
     });
     const data = await response.json();
     if (!response.ok) throw new Error(data.error);
     selectedArticleContent.value = data.articleText;
-    // 取得した本文を使って要約を実行
     summarizeText(data.articleText);
   } catch (e: any) {
     error.content = e.message;
-    error.summary = e.message; // エラーを両方に表示
+    error.summary = e.message;
   } finally {
     loading.content = false;
-    // summarizeText内でsummaryのloadingはfalseになるのでここでは不要
   }
 };
 
 const summarizeText = async (text: string) => {
-  // loading.summaryはfetchArticleContentでtrueに設定済み
   try {
     const geminiApiKey = import.meta.env.VITE_GEMINI_API_KEY;
     if (!geminiApiKey) throw new Error('VITE_GEMINI_API_KEY が設定されていません。');
-    
+
     const response = await fetch('/api/summarize-article', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ articleText: text, geminiApiKey })
+      body: JSON.stringify({ articleText: text, geminiApiKey }),
     });
     const data = await response.json();
     if (!response.ok) throw new Error(data.error);
@@ -196,30 +195,27 @@ const askQuestion = async () => {
   loading.answer = true;
   error.answer = '';
   const currentQuestion = followUpQuestion.value;
-  // 質問送信後、入力欄をクリア
   followUpQuestion.value = '';
 
   try {
     const geminiApiKey = import.meta.env.VITE_GEMINI_API_KEY;
     if (!geminiApiKey) throw new Error('VITE_GEMINI_API_KEY が設定されていません。');
-    
+
     const response = await fetch('/api/answer-question', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ 
+      body: JSON.stringify({
         articleText: selectedArticleContent.value,
         question: currentQuestion,
-        geminiApiKey 
-      })
+        geminiApiKey,
+      }),
     });
     const data = await response.json();
     if (!response.ok) throw new Error(data.error);
 
     qaHistory.value.unshift({ question: currentQuestion, answer: data.answer });
-    
   } catch (e: any) {
     error.answer = e.message;
-    // エラーが起きた場合は質問を履歴に追加しない
   } finally {
     loading.answer = false;
   }
@@ -227,21 +223,21 @@ const askQuestion = async () => {
 </script>
 
 <style>
-/* --- <style>部分は変更ありません --- */
 :root {
-  /* カラーパレットを微調整して、より柔らかい印象に */
   --border-color: #e0e0e0;
-  --background-color: #f4f5f7; /* 少しだけ色味のある背景色 */
+  --background-color: #f4f5f7;
   --pane-background: #ffffff;
-  --primary-color: #0d6efd; /* より鮮やかな青 */
+  --primary-color: #0d6efd;
   --text-color: #212529;
   --sub-text-color: #6c757d;
-  --selected-bg-color: #e9ecef; /* 選択時の背景色 */
+  --selected-bg-color: #e9ecef;
 }
-html, body {
+html,
+body {
   height: 100%;
   margin: 0;
-  font-family: 'Hiragino Kaku Gothic ProN', 'ヒラギノ角ゴ ProN W3', Meiryo, メイリオ, Osaka, 'MS PGothic', arial, helvetica, sans-serif;
+  font-family: 'Hiragino Kaku Gothic ProN', 'ヒラギノ角ゴ ProN W3', Meiryo, メイリオ, Osaka, 'MS PGothic',
+    arial, helvetica, sans-serif;
   background-color: var(--background-color);
   color: var(--text-color);
 }
@@ -250,26 +246,24 @@ html, body {
   flex-direction: column;
   height: 100vh;
 }
-/* --- 1. トップバーの改善 --- */
 .top-bar {
   display: flex;
   align-items: center;
   padding: 1rem 1.5rem;
   background-color: var(--pane-background);
-  /* 影を付けてコンテンツエリアから少し浮き上がらせる */
-  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-  z-index: 10; /* 他の要素より手前に表示 */
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  z-index: 10;
   flex-shrink: 0;
 }
 .top-bar h1 {
   font-size: 1.5rem;
   margin: 0;
-  color: #333; /* ブランドカラーではなく、落ち着いた色に */
+  color: #333;
 }
 .search-box {
   display: flex;
-  gap: 0.5rem; /* ボタンとの間隔を少し詰める */
-  margin-left: auto; /* 右寄せにする */
+  gap: 0.5rem;
+  margin-left: auto;
   width: 450px;
 }
 .search-box input {
@@ -277,8 +271,8 @@ html, body {
   padding: 0.75rem 1rem;
   font-size: 1rem;
   border: 1px solid var(--border-color);
-  border-radius: 8px; /* 角を丸く */
-  transition: all 0.2s ease; /* フォーカス時のアニメーション */
+  border-radius: 8px;
+  transition: all 0.2s ease;
 }
 .search-box input:focus {
   outline: none;
@@ -286,40 +280,37 @@ html, body {
   box-shadow: 0 0 0 3px rgba(13, 110, 253, 0.25);
 }
 
- .search-box button {
+.search-box button {
   padding: 0.75rem 1.5rem;
   font-size: 1rem;
   font-weight: 500;
   color: white;
   background-color: var(--primary-color);
   border: none;
-  border-radius: 8px; /* 角を丸く */
+  border-radius: 8px;
   cursor: pointer;
   transition: background-color 0.2s ease;
 }
 .search-box button:hover:not(:disabled) {
-  background-color: #0b5ed7; /* ホバー時少し濃くする */
+  background-color: #0b5ed7;
 }
 .search-box button:disabled {
   opacity: 0.7;
   cursor: not-allowed;
 }
-
-/* --- 2. メインコンテンツエリアの改善 --- */
 .main-content {
   display: flex;
   flex-grow: 1;
   overflow: hidden;
-  padding: 1rem; /* パネルの外側に余白を追加 */
-  gap: 1rem; /* パネル間の隙間を設定 */
+  padding: 1rem;
+  gap: 1rem;
 }
 .pane {
-  flex: 1;
   overflow-y: auto;
   background-color: var(--pane-background);
-  border: none; /* ボーダーを削除 */
-  border-radius: 12px; /* パネルの角を丸くする */
-  box-shadow: 0 4px 12px rgba(0,0,0,0.08); /* 影を付けてカード感を出す */
+  border: none;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
   display: flex;
   flex-direction: column;
 }
@@ -334,14 +325,25 @@ html, body {
   position: sticky;
   top: 0;
   z-index: 5;
-  /* 角丸を親要素に合わせる */
   border-top-left-radius: 12px;
   border-top-right-radius: 12px;
 }
 
+/* ★★変更点: パネルの幅をflex比率で調整 */
 .article-list-pane {
-  flex: 0 0 400px; /* 左ペインの幅を固定 */
+  flex: 1; /* 比率1 */
+  min-width: 300px; /* 最小幅 */
 }
+.article-content-pane {
+  flex: 1.5; /* 比率1.5 */
+  min-width: 350px; /* 最小幅 */
+}
+.ai-assistant-pane {
+  flex: 1.5; /* 比率1.5 */
+  min-width: 350px; /* 最小幅 */
+}
+
+
 .article-list-pane ul {
   list-style: none;
   padding: 0;
@@ -383,23 +385,8 @@ html, body {
   text-decoration: underline;
 }
 
-/* 中央と右のペインの幅を調整 */
-.article-content-pane {
-  flex: 1.5;
-}
-.ai-assistant-pane {
-  flex: 1.5;
-}
-
-.summary-result {
-  line-height: 1.7;
-  white-space: pre-wrap;
-  font-size: 1.1rem; /* 要約を少し大きく表示 */
-  padding: 0.5rem;
-}
 .ai-section {
   padding: 1.5rem;
-  /* パネルいっぱいに広がるように */
   flex-grow: 1;
   display: flex;
   flex-direction: column;
@@ -430,9 +417,9 @@ html, body {
   transition: all 0.2s ease;
 }
 .question-form textarea:focus {
-   outline: none;
-   border-color: var(--primary-color);
-   box-shadow: 0 0 0 3px rgba(13, 110, 253, 0.25);
+  outline: none;
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px rgba(13, 110, 253, 0.25);
 }
 .question-form button {
   align-self: flex-end;
@@ -449,12 +436,11 @@ html, body {
   background-color: #0b5ed7;
 }
 
-/* チャット風の対話履歴 */
 .qa-history {
   margin-top: 1.5rem;
   padding: 0 0.5rem;
-  flex-grow: 1; /* 残りの高さを埋める */
-  overflow-y: auto; /* 履歴が多くなったらスクロール */
+  flex-grow: 1;
+  overflow-y: auto;
 }
 .qa-history h4 {
   margin-top: 0;
@@ -463,26 +449,28 @@ html, body {
 }
 .qa-item {
   margin-bottom: 1.5rem;
-  border-bottom: none; /* 区切り線を削除 */
+  border-bottom: none;
   display: flex;
   flex-direction: column;
 }
-.qa-item .question, .qa-item .answer {
+.qa-item .question {
   padding: 0.75rem 1rem;
   border-radius: 12px;
   line-height: 1.6;
   max-width: 90%;
-}
-.qa-item .question {
   background-color: var(--selected-bg-color);
-  align-self: flex-end; /* 質問を右寄せ */
-  border-bottom-right-radius: 0; /* 吹き出し風 */
+  align-self: flex-end;
+  border-bottom-right-radius: 0;
   font-weight: 600;
 }
 .qa-item .answer {
+  padding: 0.75rem 1rem;
+  border-radius: 12px;
+  line-height: 1.6;
+  max-width: 90%;
   background-color: #f1f3f4;
-  align-self: flex-start; /* 回答を左寄せ */
-  border-bottom-left-radius: 0; /* 吹き出し風 */
+  align-self: flex-start;
+  border-bottom-left-radius: 0;
   white-space: pre-wrap;
   margin-top: 0.5rem;
 }
@@ -490,7 +478,6 @@ html, body {
   margin: 0;
 }
 
-/* --- 共通・ユーティリティ要素 --- */
 .placeholder {
   flex-grow: 1;
   display: flex;
@@ -511,8 +498,12 @@ html, body {
   margin: 2rem auto;
 }
 @keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
 }
 
 .error-message {
@@ -522,5 +513,45 @@ html, body {
   padding: 1rem;
   border-radius: 8px;
   margin: 1rem;
+}
+
+/* ★★追加: Markdown用のスタイル */
+.markdown-body {
+  line-height: 1.7;
+}
+.markdown-body h1,
+.markdown-body h2,
+.markdown-body h3 {
+  margin-top: 1.5rem;
+  margin-bottom: 1rem;
+  line-height: 1.3;
+  font-weight: 600;
+}
+.markdown-body h3 {
+  font-size: 1.2rem;
+  border-bottom: 1px solid #eee;
+  padding-bottom: .3em;
+}
+.markdown-body p {
+  margin-top: 0;
+  margin-bottom: 1rem;
+}
+.markdown-body ul,
+.markdown-body ol {
+  margin-bottom: 1rem;
+  padding-left: 2rem;
+}
+.markdown-body li > p {
+  margin-bottom: 0.25rem;
+}
+.markdown-body strong {
+  color: var(--primary-color);
+}
+.markdown-body pre,
+.markdown-body code {
+  font-family: monospace;
+  background-color: #f1f3f4;
+  padding: 0.2em 0.4em;
+  border-radius: 4px;
 }
 </style>

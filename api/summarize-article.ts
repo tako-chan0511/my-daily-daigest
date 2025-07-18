@@ -19,7 +19,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // ★★★ HTMLの取得と本文抽出のロジックは不要になったので削除 ★★★
 
     // 抽出済みのテキストをGemini APIに渡して要約
-    const prompt = `以下のニュース記事の本文を、最も重要な3つのポイントにまとめて、箇条書きで簡潔に要約してください。\n\n---記事本文---\n${articleText.substring(0, 8000)}\n\n---要約---`;
+    const prompt = `以下の記事を、Markdown形式で構造化して要約してください。見出し、太字、箇条書きリストなどを効果的に使用し、最も重要なポイントがひと目で分かるようにまとめてください。\n\n記事本文：\n${articleText}`;
     
     const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${geminiApiKey}`;
     const apiResponse = await fetch(apiUrl, {
