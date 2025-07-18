@@ -5,13 +5,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(405).json({ error: "POST method required." });
   }
 
-  const { keyword, gnewsApiKey } = req.body;
+  // フロントからAPIキーを受け取るのをやめる
+  const { keyword } = req.body;
+  // サーバーの環境変数から直接APIキーを読み込む
+  const gnewsApiKey = process.env.GNEWS_API_KEY;
 
   if (!keyword || typeof keyword !== 'string') {
     return res.status(400).json({ error: '検索キーワードが必要です。' });
   }
   if (!gnewsApiKey) {
-    return res.status(500).json({ error: 'GNews APIキーがフロントエンドから提供されませんでした。' });
+    // エラーメッセージを分かりやすく変更
+    return res.status(500).json({ error: 'GNews APIキーがサーバーに設定されていません。' });
   }
 
   try {
@@ -20,12 +24,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       lang: 'ja',
       country: 'jp',
       max: '10',
-      apikey: gnewsApiKey,
+      apikey: gnewsApiKey, // サーバーのキーを使用
     });
 
     const gnewsUrl = `https://gnews.io/api/v4/search?${params.toString()}`;
-    console.log(`[Info] Searching GNews: ${gnewsUrl}`);
-    
     const response = await fetch(gnewsUrl);
 
     if (!response.ok) {

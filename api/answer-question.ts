@@ -5,17 +5,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(405).json({ error: "POST method required." });
   }
 
-  const { articleText, question, geminiApiKey: userApiKey } = req.body;
-  const developerApiKey = process.env.VITE_GEMINI_API_KEY || process.env.GEMINI_API_KEY;
-  const geminiApiKey = userApiKey || developerApiKey;
+  // フロントからAPIキーを受け取るのをやめる
+  const { articleText, question } = req.body;
+  // サーバーの環境変数から直接APIキーを読み込む
+  const geminiApiKey = process.env.GEMINI_API_KEY;
 
   if (!articleText || !question) {
     return res.status(400).json({ error: '記事本文と質問の両方が必要です。' });
   }
   if (!geminiApiKey) {
-    return res.status(500).json({ error: 'Gemini APIキーが設定されていません。' });
+    // エラーメッセージを分かりやすく変更
+    return res.status(500).json({ error: 'Gemini APIキーがサーバーに設定されていません。' });
   }
-
   try {
     // ★★★ ここからが修正箇所 ★★★
     const prompt = `
@@ -38,6 +39,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     `;
     // ★★★ ここまでが修正箇所 ★★★
     
+  // サーバーのキーを使用
     const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${geminiApiKey}`;
     const apiResponse = await fetch(apiUrl, {
       method: 'POST',

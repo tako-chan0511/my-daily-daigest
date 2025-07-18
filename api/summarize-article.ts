@@ -5,22 +5,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(405).json({ error: "POST method required." });
   }
 
-  // ★★★ articleUrl の代わりに articleText と geminiApiKey を受け取る ★★★
-  const { articleText, geminiApiKey } = req.body;
+  // フロントからAPIキーを受け取るのをやめる
+  const { articleText } = req.body;
+  // サーバーの環境変数から直接APIキーを読み込む
+  const geminiApiKey = process.env.GEMINI_API_KEY;
 
   if (!articleText || typeof articleText !== 'string') {
     return res.status(400).json({ error: '要約するための記事本文が必要です。' });
   }
   if (!geminiApiKey) {
-    return res.status(500).json({ error: 'Gemini APIキーがフロントエンドから提供されませんでした。' });
+    // エラーメッセージを分かりやすく変更
+    return res.status(500).json({ error: 'Gemini APIキーがサーバーに設定されていません。' });
   }
 
   try {
-    // ★★★ HTMLの取得と本文抽出のロジックは不要になったので削除 ★★★
-
-    // 抽出済みのテキストをGemini APIに渡して要約
     const prompt = `以下の記事を、Markdown形式で構造化して要約してください。見出し、太字、箇条書きリストなどを効果的に使用し、最も重要なポイントがひと目で分かるようにまとめてください。\n\n記事本文：\n${articleText}`;
     
+    // サーバーのキーを使用
     const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${geminiApiKey}`;
     const apiResponse = await fetch(apiUrl, {
       method: 'POST',

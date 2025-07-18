@@ -213,15 +213,14 @@ const fetchNews = async () => {
   followUpQuestion.value = "";
   state.lastSearchedKeyword = keyword.value;
 
-  try {
-    const apiKey = import.meta.env.VITE_GNEWS_API_KEY;
-    if (!apiKey) throw new Error("VITE_GNEWS_API_KEY が設定されていません。");
+   try {
+    // ★★★ VITE_GNEWS_API_KEY を読み込む行を削除 ★★★
 
     const response = await fetch("/api/fetch-news", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        gnewsApiKey: apiKey,
+        // ★★★ gnewsApiKey を送信する部分を削除 ★★★
         keyword: state.lastSearchedKeyword,
       }),
     });
@@ -275,14 +274,15 @@ const fetchArticleContent = async (url: string) => {
 
 const summarizeText = async (text: string) => {
   try {
-    const geminiApiKey = import.meta.env.VITE_GEMINI_API_KEY;
-    if (!geminiApiKey)
-      throw new Error("VITE_GEMINI_API_KEY が設定されていません。");
+    // ★★★ VITE_GEMINI_API_KEY を読み込む行を削除 ★★★
 
     const response = await fetch("/api/summarize-article", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ articleText: text, geminiApiKey }),
+      body: JSON.stringify({ 
+        articleText: text, 
+        // ★★★ geminiApiKey を送信する部分を削除 ★★★
+      }),
     });
     const data = await response.json();
     if (!response.ok) throw new Error(data.error);
@@ -303,9 +303,7 @@ const askQuestion = async () => {
   followUpQuestion.value = "";
 
   try {
-    const geminiApiKey = import.meta.env.VITE_GEMINI_API_KEY;
-    if (!geminiApiKey)
-      throw new Error("VITE_GEMINI_API_KEY が設定されていません。");
+    // ★★★ VITE_GEMINI_API_KEY を読み込む行を削除 ★★★
 
     const response = await fetch("/api/answer-question", {
       method: "POST",
@@ -313,7 +311,7 @@ const askQuestion = async () => {
       body: JSON.stringify({
         articleText: state.selectedArticleContent,
         question: currentQuestion,
-        geminiApiKey,
+        // ★★★ geminiApiKey を送信する部分を削除 ★★★
       }),
     });
     const data = await response.json();
